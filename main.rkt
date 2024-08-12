@@ -1,50 +1,76 @@
 #lang racket/base
 
-(module+ test
-  (require rackunit))
 
-;; Notice
-;; To install (from within the package directory):
-;;   $ raco pkg install
-;; To install (once uploaded to pkgs.racket-lang.org):
-;;   $ raco pkg install <<name>>
-;; To uninstall:
-;;   $ raco pkg remove <<name>>
-;; To view documentation:
-;;   $ raco docs <<name>>
-;;
-;; For your convenience, we have included LICENSE-MIT and LICENSE-APACHE files.
-;; If you would prefer to use a different license, replace those files with the
-;; desired license.
-;;
-;; Some users like to add a `private/` directory, place auxiliary files there,
-;; and require them in `main.rkt`.
-;;
-;; See the current version of the racket style guide here:
-;; http://docs.racket-lang.org/style/index.html
+(provide define/guard
+         guard
+         guard-match
+         guarded-block)
 
-;; Code here
 
+(require (for-syntax racket/base
+                     syntax/parse/lib/function-header)
+         racket/match
+         syntax/parse/define)
 
 
 (module+ test
-  ;; Any code in this `test` submodule runs when this file is run using DrRacket
-  ;; or with `raco test`. The code here does not run when this file is
-  ;; required by another module.
+  (require (submod "..")
+           rackunit))
 
-  (check-equal? (+ 2 2) 4))
 
-(module+ main
-  ;; (Optional) main submodule. Put code here if you need it to be executed when
-  ;; this file is run using DrRacket or the `racket` executable.  The code here
-  ;; does not run when this file is required by another module. Documentation:
-  ;; http://docs.racket-lang.org/guide/Module_Syntax.html#%28part._main-and-test%29
+;@----------------------------------------------------------------------------------------------------
 
-  (require racket/cmdline)
-  (define who (box "world"))
-  (command-line
-    #:program "my-program"
-    #:once-each
-    [("-n" "--name") name "Who to say hello to" (set-box! who name)]
-    #:args ()
-    (printf "hello ~a~n" (unbox who))))
+
+(define-syntax (guard stx)
+  (raise-syntax-error
+   #false "must be used immediately within a guarded block" stx))
+
+
+(define-syntax-parse-rule (guarded-block form:expr ...)
+  (let () (guarded-begin form ...)))
+
+
+(define-syntax (guarded-begin stx)
+  (syntax-parse stx
+    #:track-literals
+    [(_) #'(begin)]
+    [(_ initial-form leftover-form ...)
+     (define expanded-initial-form
+       (local-expand
+        #'initial-form (syntax-local-context) (list #'guard #'define-values)))
+     (syntax-protect
+      (syntax-parse (syntax-disarm expanded-initial-form #false)
+        #:literal-sets (kernel-literals)
+        #:literals (guard)
+        #:track-literals
+        [(begin ~! subform:expr ...)
+         #'(guarded-begin subform ... leftover-form ...)]
+        [(define-values ~! . _)
+         #`(begin #,expanded-initial-form (guarded-begin leftover-form ...))]
+        [(define-syntaxes ~! . _)
+         #`(begin #,expanded-initial-form (guarded-begin leftover-form ...))]
+        [(guard condition:expr #:else ~! else-form:expr ...+)
+         #'(cond
+             [condition (guarded-begin leftover-form ...)]
+             [else (guarded-begin else-form ...)])]
+        [e:expr #'(begin e (guarded-begin leftover-form ...))]))]))
+
+
+(define-syntax-parse-rule (define/guard header:function-header body:expr ...+)
+  (define header (guarded-begin body ...)))
+
+
+(define-syntax-parse-rule (guard-match pattern subject:expr #:else failure-body ...+)
+  (begin
+    (define subject-matched? (match subject [pattern #true] [_ #false]))
+    (guard subject-matched? #:else failure-body ...)
+    (match-define pattern subject)))
+
+
+(module+ test
+  (test-case "guard-match"
+    (define/guard (f opt)
+      (guard-match (? number? x) opt #:else "failed")
+      (format "x = ~a" x))
+    (check-equal? (f "not a number") "failed")
+    (check-equal? (f 5) "x = 5")))
