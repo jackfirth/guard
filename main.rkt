@@ -21,9 +21,9 @@
 ;@----------------------------------------------------------------------------------------------------
 
 
-(define-syntax (guard stx)
-  (raise-syntax-error
-   #false "must be used immediately within a guarded block" stx))
+(define-syntax-parse-rule (guard condition:expr #:else fail-body:expr ...+)
+  #:do [(raise-syntax-error #false "must be used immediately within a guarded block" this-syntax)]
+  (void))
 
 
 (define-syntax-parse-rule (guarded-block form:expr ...)
