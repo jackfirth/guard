@@ -52,10 +52,8 @@ uses traditional Racket forms and the other of which uses guard statements.
   #:no-prompt
   #:label "Using guard statements:"
   (define/guard (lists-equal? xs ys)
-    (guard-match (cons x rest-xs) xs #:else
-      (empty? ys))
-    (guard-match (cons y rest-ys) ys #:else
-      #false)
+    (guard-match (cons x rest-xs) xs #:else (empty? ys))
+    (guard-match (cons y rest-ys) ys #:else #false)
     (and (equal? x y) (lists-equal? rest-xs rest-ys))))
 
 
@@ -75,10 +73,8 @@ Guard statements cooperate with macro expansion. Macros can expand into uses of 
    #:eval (make-evaluator) #:once
    (eval:no-prompt
     (define/guard (add-positive x y)
-      (guard (positive? x) #:else
-        'nonpositive-x)
-      (guard (positive? y) #:else
-        'nonpositive-y)
+      (guard (positive? x) #:else 'nonpositive-x)
+      (guard (positive? y) #:else 'nonpositive-y)
       (+ x y)))
 
    (add-positive -4 7)
@@ -100,10 +96,8 @@ Guard statements cooperate with macro expansion. Macros can expand into uses of 
    #:eval (make-evaluator) #:once
    (eval:no-prompt
     (define/guard (zip-lists zipper xs ys)
-      (guard-match (cons x rest-xs) xs #:else
-        '())
-      (guard-match (cons y rest-ys) ys #:else
-        '())
+      (guard-match (cons x rest-xs) xs #:else '())
+      (guard-match (cons y rest-ys) ys #:else '())
       (cons (zipper x y) (zip-lists zipper rest-xs rest-ys))))
 
    (zip-lists (λ (action animal) (format "~a, ~a!" action animal))
@@ -128,8 +122,7 @@ Guard statements cooperate with macro expansion. Macros can expand into uses of 
    #:eval (make-evaluator) #:once
    (eval:no-prompt
     (define/guard (filter-and-double-numbers xs)
-      (guard-match (cons x rest-xs) xs #:else
-        '())
+      (guard-match (cons x rest-xs) xs #:else '())
       (guard (number? x) #:else
         (filter-and-double-numbers rest-xs))
       (cons (* x 2) (filter-and-double-numbers rest-xs))))
@@ -149,8 +142,7 @@ Guard statements cooperate with macro expansion. Macros can expand into uses of 
     (define (double-numbers-only xs)
       (for/list ([x (in-list xs)])
         (guarded-block
-         (guard (number? x) #:else
-           x)
+         (guard (number? x) #:else x)
          (* x 2)))))
 
    (double-numbers-only (list 1 2 'apple 3 'banana 4 5)))}
