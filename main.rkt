@@ -60,8 +60,9 @@
   (define header (guarded-begin body ...)))
 
 
-(define-syntax-parse-rule (guard-match pattern subject:expr #:else failure-body ...+)
+(define-syntax-parse-rule (guard-match pattern subject-expr:expr #:else failure-body ...+)
   (begin
+    (define subject subject-expr)
     (define subject-matched? (match subject [pattern #true] [_ #false]))
     (guard subject-matched? #:else failure-body ...)
     (match-define pattern subject)))
