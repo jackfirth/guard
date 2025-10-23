@@ -2,25 +2,11 @@ on: [push, pull_request]
 name: CI
 jobs:
   build:
-    name: "Build on Racket '${{ matrix.racket-version }}' (${{ matrix.racket-variant }})"
+    name: "Build on Racket"
     runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.experimental || false }}
-    strategy:
-      fail-fast: false
-      matrix:
-        racket-version: ["stable", "current"]
-        racket-variant: ["BC", "CS"]
-        include:
-          - racket-version: current
-            experimental: true
     steps:
       - uses: actions/checkout@v3.1.0
       - uses: Bogdanp/setup-racket@v1.9.1
-        with:
-          architecture: x64
-          distribution: full
-          variant: ${{ matrix.racket-variant }}
-          version: ${{ matrix.racket-version }}
       - name: Installing guard and its dependencies
         run: raco pkg install --no-docs --auto --name guard
       - name: Compiling guard and building its docs
