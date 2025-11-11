@@ -102,6 +102,24 @@ Guard statements cooperate with macro expansion. Macros can expand into uses of 
 
    (zip-lists (λ (action animal) (format "~a, ~a!" action animal))
               (list "jump" "dig" "hop")
+              (list "dog" "mole" "rabbit")))
+
+ Additionally, multiple patterns may be given in place of @racket[match-pattern] using
+ @racket[values]. This causes the guard to expect @racket[expr] to evaluate to multiple
+ values, one per given pattern, or else an error is raised. Each value is matched against
+ the corresponding pattern, and if any of them do not match, the @racket[fail-body ...] branch is
+ taken. This form is similar to @racket[match-define-values].
+
+ @(examples
+   #:eval (make-evaluator) #:once
+   (eval:no-prompt
+    (define/guard (zip-lists zipper xs ys)
+      (guard-match (values (cons x rest-xs) (cons y rest-ys)) (values xs ys)
+        #:else '())
+      (cons (zipper x y) (zip-lists zipper rest-xs rest-ys))))
+
+   (zip-lists (λ (action animal) (format "~a, ~a!" action animal))
+              (list "jump" "dig" "hop")
               (list "dog" "mole" "rabbit")))}
 
 
