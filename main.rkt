@@ -8,6 +8,8 @@
 
 
 (require (for-syntax racket/base
+                     racket/list
+                     racket/syntax
                      syntax/parse/lib/function-header)
          racket/match
          syntax/parse/define)
@@ -60,18 +62,47 @@
   (define header (guarded-begin body ...)))
 
 
-(define-syntax-parse-rule (guard-match pattern subject-expr:expr #:else failure-body ...+)
+(begin-for-syntax
+  (define-syntax-class guard-pattern
+    #:attributes ([subject-id 1] match-test definition)
+    #:literals (values)
+
+    (pattern (values pattern:expr ...)
+      #:with (subject-id ...) (generate-temporaries #'(pattern ...))
+      #:with (placeholder ...) (make-list (length (attribute pattern)) #'_)
+      #:with match-test #`(match* (subject-id ...) [(pattern ...) #true] [(placeholder ...) #false])
+      #:with definition #'(match-define-values (pattern ...) (values subject-id ...)))
+
+    (pattern pattern:expr
+      #:with only-subject-id (generate-temporary)
+      #:with (subject-id ...) (list #'only-subject-id)
+      #:with match-test #'(match only-subject-id [pattern #true] [_ #false])
+      #:with definition #'(match-define pattern only-subject-id))))
+
+
+(define-syntax-parse-rule (guard-match pattern:guard-pattern subject-expr:expr
+                            #:else failure-body ...+)
   (begin
-    (define subject subject-expr)
-    (define subject-matched? (match subject [pattern #true] [_ #false]))
+    (define-values (pattern.subject-id ...) subject-expr)
+    (define subject-matched? pattern.match-test)
     (guard subject-matched? #:else failure-body ...)
-    (match-define pattern subject)))
+    pattern.definition))
 
 
 (module+ test
   (test-case "guard-match"
-    (define/guard (f opt)
-      (guard-match (? number? x) opt #:else "failed")
-      (format "x = ~a" x))
-    (check-equal? (f "not a number") "failed")
-    (check-equal? (f 5) "x = 5")))
+
+    (test-case "single value"
+      (define/guard (f opt)
+        (guard-match (? number? x) opt #:else "failed")
+        (format "x = ~a" x))
+      (check-equal? (f "not a number") "failed")
+      (check-equal? (f 5) "x = 5"))
+
+    (test-case "multiple values"
+      (define/guard (f opt1 opt2)
+        (guard-match (values (? number? x) (? number? y)) (values opt1 opt2) #:else "failed")
+        (format "x = ~a, y = ~a" x y))
+      (check-equal? (f "not a number" 7) "failed")
+      (check-equal? (f 5 "not a number") "failed")
+      (check-equal? (f 5 7) "x = 5, y = 7"))))
