@@ -40,22 +40,21 @@
      (define expanded-initial-form
        (local-expand
         #'initial-form (syntax-local-context) (list #'guard #'define-values)))
-     (syntax-protect
-      (syntax-parse (syntax-disarm expanded-initial-form #false)
-        #:literal-sets (kernel-literals)
-        #:literals (guard)
-        #:track-literals
-        [(begin ~! subform:expr ...)
-         #'(guarded-begin subform ... leftover-form ...)]
-        [(define-values ~! . _)
-         #`(begin #,expanded-initial-form (guarded-begin leftover-form ...))]
-        [(define-syntaxes ~! . _)
-         #`(begin #,expanded-initial-form (guarded-begin leftover-form ...))]
-        [(guard condition:expr #:else ~! else-form:expr ...+)
-         #'(cond
-             [condition (guarded-begin leftover-form ...)]
-             [else (guarded-begin else-form ...)])]
-        [e:expr #'(begin e (guarded-begin leftover-form ...))]))]))
+     (syntax-parse (syntax-disarm expanded-initial-form #false)
+       #:literal-sets (kernel-literals)
+       #:literals (guard)
+       #:track-literals
+       [(begin ~! subform:expr ...)
+        #'(guarded-begin subform ... leftover-form ...)]
+       [(define-values ~! . _)
+        #`(begin #,expanded-initial-form (guarded-begin leftover-form ...))]
+       [(define-syntaxes ~! . _)
+        #`(begin #,expanded-initial-form (guarded-begin leftover-form ...))]
+       [(guard condition:expr #:else ~! else-form:expr ...+)
+        #'(cond
+            [condition (guarded-begin leftover-form ...)]
+            [else (guarded-begin else-form ...)])]
+       [e:expr #'(begin e (guarded-begin leftover-form ...))])]))
 
 
 (define-syntax-parse-rule (define/guard header:function-header body:expr ...+)
