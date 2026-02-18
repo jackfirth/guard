@@ -40,7 +40,7 @@
      (define expanded-initial-form
        (local-expand
         #'initial-form (syntax-local-context) (list #'guard #'define-values)))
-     (syntax-parse (syntax-disarm expanded-initial-form #false)
+     (syntax-parse expanded-initial-form
        #:literal-sets (kernel-literals)
        #:literals (guard)
        #:track-literals
